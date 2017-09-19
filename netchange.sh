@@ -38,63 +38,61 @@ itv_dns=$(getprop dhcp.eth0.dns1)
 # 10.234.96.0/19 dev eth0  proto kernel  scope link  src 10.234.116.xxx
 # 192.168.1.0/24 dev wlan0  scope link
 # 192.168.1.0/24 dev wlan0  proto kernel  scope link  src 192.168.1.xxx
-#so we delete one default here
-ip route del
 
-while [ 1 ]
+while :
 do
     # check whether itv is current window
     check_app=$( dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' | grep -E com.zte.browser | busybox wc -l )
     if [ $check_app != 0 ] && [ $itv != 1 ]; then
-        echo "=itv started..."
+        echo "=itv started..." >> /cache/netchange.log
         if [ $itv_gw = "" ]; then
-            echo "=please connect itv..."
+            echo "=please connect itv..." >> /cache/netchange.log
         else
             itv=1
+
+			check_wifi=$( ip route | grep "$wifi_if" | busybox wc -l )
+            if [ $check_wifi = 3 ]; then
+                ip route delete default via $wifi_gw dev $wifi_if
+            fi
             
             check_itv=$( ip route | grep "$itv_if" | busybox wc -l )
             if [ $check_itv != 3 ]; then
                 ip route add default via $itv_gw dev $itv_if
-            if
-            
-            check_wifi=$( ip route | grep "$wifi_if" | busybox wc -l )
-            if [ $check_wifi = 3 ]; then
-                ip route delete default via $wifi_gw dev $wifi_if
-            if
+            fi
             
             ndc resolver flushdefaultif
             ndc resolver setifdns $itv_if "" $itv_dns
             ndc resolver setdefaultif $itv_if
             sleep 1
-            echo "=switched to $itv_if..."
-            echo "=gateway:$itv_gw dns:$itv_dns"
+            echo "=switched to $itv_if..." >> /cache/netchange.log
+            echo "=gateway:$itv_gw dns:$itv_dns" >> /cache/netchange.log
         fi
     elif [ $check_app = 0 ] && [ $itv = 1 ]; then
-        echo "=itv stopped..."
+        echo "=itv stopped..." >> /cache/netchange.log
         if [ $wifi_gw = "" ]; then
-            echo "=please connect wifi..."
+            echo "=please connect wifi..." >> /cache/netchange.log
         else
             itv=0
             
             check_itv=$( ip route | grep "$itv_if" | busybox wc -l )
             if [ $check_itv = 3 ]; then
                 ip route del default via $itv_gw dev $itv_if
-            if
+            fi
             
             check_wifi=$( ip route | grep "$wifi_if" | busybox wc -l )
             if [ $check_wifi != 3 ]; then
                 ip route add default via $wifi_gw dev $wifi_if
-            if
+            fi
             
             ndc resolver flushdefaultif
             ndc resolver setifdns $wifi_if "" $wifi_dns
             ndc resolver setdefaultif $wifi_if
             sleep 1
-            echo "=switched to $wifi_if..."
-            echo "=gateway:$wifi_gw dns:$wifi_dns"
+            echo "=switched to $wifi_if..." >> /cache/netchange.log
+            echo "=gateway:$wifi_gw dns:$wifi_dns" >> /cache/netchange.log
         fi
     fi
    
-    sleep 1
+    sleep 5
         
 done 

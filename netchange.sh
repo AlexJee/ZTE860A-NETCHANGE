@@ -19,35 +19,37 @@ do
         sleep 10
 done
 
-# 0:wifi 1:itv
-itv=1
-
-# gateway and dns
-wifi_if="wlan0"
-wifi_gw=$(getprop dhcp.wlan0.gateway)
-wifi_dns=$(getprop dhcp.wlan0.dns1)
-
-itv_if="eth0"
-itv_gw=$(getprop dhcp.eth0.gateway)
-itv_dns=$(getprop dhcp.eth0.dns1)
+#we need to wait for itv connection to be established
+sleep 10
 
 # if you have wifi and eth0 connected, then you should have the following network config
 # default via 192.168.1.1 dev wlan0
-# default via 10.234.96.1 dev eth0
-# 10.234.96.1 dev eth0  scope link
-# 10.234.96.0/19 dev eth0  proto kernel  scope link  src 10.234.116.xxx
+# default via xxx.xxx.xxx.x dev eth0
+# xxx.xxx.xxx.x dev eth0  scope link
+# xxx.xxx.xxx.x/xx dev eth0  proto kernel  scope link  src xxx.xxx.xxx.x
 # 192.168.1.0/24 dev wlan0  scope link
 # 192.168.1.0/24 dev wlan0  proto kernel  scope link  src 192.168.1.xxx
 
+# 0:wifi 1:itv
+itv=1
+
+wifi_if="wlan0"
+itv_if="eth0"
+
 while :
 do
+	# wifi gateway and dns
+	wifi_gw=$(getprop dhcp.wlan0.gateway)
+	wifi_dns=$(getprop dhcp.wlan0.dns1)
+	# itv gateway and dns
+	itv_gw=$(getprop dhcp.eth0.gateway)
+	itv_dns=$(getprop dhcp.eth0.dns1)
+
     # check whether itv is current window
     check_app=$( dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' | grep -E com.zte.browser | busybox wc -l )
     if [ $check_app != 0 ] && [ $itv != 1 ]; then
-        echo "=itv started..." >> /cache/netchange.log
-        if [ $itv_gw = "" ]; then
-            echo "=please connect itv..." >> /cache/netchange.log
-        else
+        if [ $itv_gw != "" ]; then
+        	echo "=itv started..." >> /cache/netchange.log
             itv=1
 
 			check_wifi=$( ip route | grep "$wifi_if" | busybox wc -l )
@@ -68,10 +70,8 @@ do
             echo "=gateway:$itv_gw dns:$itv_dns" >> /cache/netchange.log
         fi
     elif [ $check_app = 0 ] && [ $itv = 1 ]; then
-        echo "=itv stopped..." >> /cache/netchange.log
-        if [ $wifi_gw = "" ]; then
-            echo "=please connect wifi..." >> /cache/netchange.log
-        else
+        if [ $wifi_gw != "" ]; then
+        	echo "=itv stopped..." >> /cache/netchange.log
             itv=0
             
             check_itv=$( ip route | grep "$itv_if" | busybox wc -l )
